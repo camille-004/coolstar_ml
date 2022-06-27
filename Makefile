@@ -13,8 +13,8 @@ install:
 lint:
 	@echo ">>> Linting code with isort, black, flake8, and mypy."
 	isort .
+	mypy .
 	black *.py
 	flake8
-	mypy test.py
 
 all: install lint

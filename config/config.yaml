@@ -1,0 +1,10 @@
+data_dir: data
+file_name: spectral_templates_data_version_june20.h5
+single_key: singles
+binary_key: binaries
+wavegrid_key: wavegrid
+spectral_type_col: spectral_type
+binary_drop_cols: ["primary_type", "secondary_type"]
+binary_rename_col: system_type
+single_drop_cols: ["object_name"]
+target_col: binary
