@@ -19,3 +19,4 @@ dependencies:
   - keras
   - pre-commit
   - scikit-learn
+  - pylint

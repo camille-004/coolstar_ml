@@ -11,9 +11,10 @@ install:
 	conda env update -f $(ENVIRONMENT_FILE)
 
 lint:
+	@echo ">>> Linting code with isort, black, flake8, and mypy."
 	isort .
 	black *.py
 	flake8
-#	mypy .
+	mypy test.py
 
 all: install lint
