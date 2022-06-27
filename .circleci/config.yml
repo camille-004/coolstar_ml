@@ -8,6 +8,7 @@ jobs:
       - run:
           name: Create env
           command: |
+            conda install -c anaconda make 
             make create_env
             source coolstar-dev activate
             make install
