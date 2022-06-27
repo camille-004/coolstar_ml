@@ -16,4 +16,3 @@ jobs:
           command: |
             source coolstar-dev activate
             make lint
-
