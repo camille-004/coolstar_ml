@@ -8,6 +8,7 @@ jobs:
       - run:
           name: Create env
           command: |
+            source ~/.bashrc
             make create_env
             source coolstar-dev activate
             make install
