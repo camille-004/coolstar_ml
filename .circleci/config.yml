@@ -10,10 +10,10 @@ jobs:
           command: |
             conda install -c anaconda make
             make create_env
-            source coolstar-dev activate
+            conda activate coolstar-dev
             make install
       - run:
           name: Run lint
           command: |
-            source coolstar-dev activate
+            conda activate coolstar-dev
             make lint
