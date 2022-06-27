@@ -27,5 +27,14 @@ def load_spectral_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     return single_df, binary_df
 
 
+def get_master_df() -> pd.DataFrame:
+    """Combine the single and binary DataFrames to get one dataset."""
+    single, binary = load_spectral_data()
+    single[TARGET_COL] = 0
+    binary[TARGET_COL] = 1
+    _df = pd.concat([single, binary]).sample(frac=1).reset_index(drop=True)
+    return _df
+
+
 # %%
-single, binary = load_spectral_data()
+df = get_master_df()

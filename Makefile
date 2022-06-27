@@ -12,9 +12,10 @@ install:
 
 lint:
 	@echo ">>> Linting code with isort, black, flake8, and mypy."
+	flake8
 	isort .
 	mypy .
 	black *.py
-	flake8
+	pylint *.py
 
 all: install lint
