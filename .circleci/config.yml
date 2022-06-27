@@ -17,5 +17,7 @@ jobs:
       - run:
           name: Run lint
           command: |
+            conda init bash
+            source ~/.bashrc
             conda activate coolstar-dev
             make lint
