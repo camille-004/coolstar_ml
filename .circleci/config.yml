@@ -10,7 +10,7 @@ jobs:
     - name: create environment and install dependencies
     - command: |
         make create_env
-        source coolstar-dev activate
+        source coolstar-dev activat
         make update_env
     - run:
     - name: run lint

@@ -1,6 +1,6 @@
 .PHONY: create_env install
 
-ENVIRONMENT_FILE = environment.yml
+ENVIRONMENT_FILE = environment.yaml
 
 create_env:
 	@echo ">>> Creating conda environment. Run 'conda activate $(ENVIRONMENT_FILE)' after this finishes."
