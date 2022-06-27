@@ -7,13 +7,13 @@ jobs:
   steps:
     - checkout
     - run:
-    - name: create environment and install dependencies
-    - command: |
+      name: create environment and install dependencies
+      command: |
         make create_env
         source coolstar-dev activate
         make update_env
     - run:
-    - name: run lint
-    - command: |
+      name: run lint
+      command: |
         source coolstar-dev activate
         make lint
