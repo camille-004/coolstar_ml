@@ -1,0 +1,19 @@
+version: 2.1
+jobs:
+  build:
+    docker: cimg/python:3.9.13
+    working_directory: coolstar_ml
+
+  steps:
+    - checkout
+    - run:
+    - name: create environment and install dependencies
+    - command: |
+        make create_env
+        source coolstar-dev activate
+        make update_env
+    - run:
+    - name: run lint
+    - command: |
+        source coolstar-dev activate
+        make lint
