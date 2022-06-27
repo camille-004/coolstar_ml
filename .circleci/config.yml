@@ -10,6 +10,7 @@ jobs:
           command: |
             conda install -c anaconda make
             make create_env
+            conda init bash
             conda activate coolstar-dev
             make install
       - run:
