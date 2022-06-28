@@ -8,3 +8,7 @@ binary_drop_cols: ["primary_type", "secondary_type"]
 binary_rename_col: system_type
 single_drop_cols: ["object_name"]
 target_col: binary
+pca_n_components: 2
+kmeans_n_clusters: 3
+subsample: 3
+n_folds: 5
