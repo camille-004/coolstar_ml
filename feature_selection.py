@@ -1,4 +1,3 @@
-# pylint: disable=C0103
 """Perform feature selection on spectra."""
 from typing import Tuple
 

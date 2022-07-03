@@ -1,10 +1,11 @@
-# pylint: disable=C0103
 """Functions to undersample or oversample spectra."""
+import os
 from typing import Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from imblearn.over_sampling import ADASYN, SMOTE
 from imblearn.under_sampling import ClusterCentroids
 from sklearn.decomposition import PCA
 
@@ -24,7 +25,20 @@ def cluster_undersample(
     return _X_res, _y_res
 
 
-def viz_pca(_X: pd.DataFrame, _y: pd.Series) -> None:
+def oversample(
+    method: str, _X: pd.DataFrame, _y: pd.Series
+) -> Tuple[pd.DataFrame, pd.Series]:
+    assert method in config["oversample_methods"]
+    if method == "adasyn":  # ADASYN
+        over = ADASYN()
+    else:  # SMOTE
+        over = SMOTE()
+    _X_res, _y_res = over.fit_resample(_X, _y)
+    print(f"New class distribution: {_y_res.value_counts().tolist()}")
+    return _X_res, _y_res
+
+
+def viz_pca(_X: pd.DataFrame, _y: pd.Series, file_name: str) -> None:
     """Visualize the sampling with a PCA embedding."""
     pca = PCA(n_components=2)
     z = pca.fit_transform(_X)
@@ -43,6 +57,9 @@ def viz_pca(_X: pd.DataFrame, _y: pd.Series) -> None:
     ax.set(title="Flux Data PCA Projection")
     handles, _ = ax.get_legend_handles_labels()
     ax.legend(handles, ["Single", "Binary"], loc="upper right")
+    plt.savefig(
+        os.path.join(config["plots_dir"], file_name)
+    )  # , dpi=config["savefig_dpi"])
     plt.show()
 
 
@@ -51,6 +68,6 @@ if __name__ == "__main__":
     flux_df = df.drop(columns=config["spectral_type_col"])
     X = flux_df.drop(columns=config["target_col"])
     y = flux_df[config["target_col"]]
-    viz_pca(X, y)
-    X_res, y_res = cluster_undersample(X, y)
-    viz_pca(X_res, y_res)
+    viz_pca(X, y, "normal_data.png")
+    X_res, y_res = oversample("smote", X, y)
+    viz_pca(X_res, y_res, "oversampled.png")

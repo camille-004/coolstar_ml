@@ -1,4 +1,5 @@
 data_dir: data
+plots_dir: plots
 file_name: spectral_templates_data_version_june20.h5
 single_key: singles
 binary_key: binaries
@@ -14,3 +15,8 @@ subsample: 3
 n_folds: 5
 feature_selection_methods: ["rfe", "fisher", "anova"]
 feature_selection_k: 100
+test_size: 0.2
+val_size: 0.25
+classifiers: ["svc", "knn", "rf", "sgd"]
+oversample_methods: ["adasyn", "smote"]
+savefig_dpi: 1200
