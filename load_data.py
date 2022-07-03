@@ -27,10 +27,14 @@ def load_spectral_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     return single_df, binary_df
 
 
-def get_all_spectra() -> pd.DataFrame:
+def get_all_spectra(only_flux: bool = False) -> Tuple[pd.DataFrame, pd.Series]:
     """Combine the single and binary DataFrames to get one dataset."""
     _single, _binary = load_spectral_data()
     _single[TARGET_COL] = 0
     _binary[TARGET_COL] = 1
     _df = pd.concat([_single, _binary]).sample(frac=1).reset_index(drop=True)
-    return _df
+    if only_flux:
+        _df.drop(config["spectral_type_col"], inplace=True)
+    _X = _df.drop(columns=TARGET_COL)
+    _y = _df[TARGET_COL]
+    return _X, _y

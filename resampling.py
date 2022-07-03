@@ -15,6 +15,26 @@ from utils import load_config
 config = load_config("config.yaml")
 
 
+def get_spectral_type(
+    _X: pd.DataFrame,
+    _y: pd.Series,
+    lower: int,
+    upper: int,
+    drop_type: bool = True,
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Get the data of starts between two spectral types, inclusive."""
+    spectral_type_col = _X[config["spectral_type_col"]]
+    assert (
+        lower in spectral_type_col.unique()
+        and upper in spectral_type_col.unique()
+    )
+    _X = _X[(spectral_type_col >= lower) & (spectral_type_col <= upper)]
+    idx = _X.index
+    if drop_type:
+        _X = _X.drop(columns=config["spectral_type_col"])
+    return _X, _y.iloc[idx]
+
+
 def cluster_undersample(
     _X: pd.DataFrame, _y: pd.Series
 ) -> Tuple[pd.DataFrame, pd.Series]:
@@ -38,7 +58,7 @@ def oversample(
     return _X_res, _y_res
 
 
-def viz_pca(_X: pd.DataFrame, _y: pd.Series, file_name: str) -> None:
+def viz_pca(_X: pd.DataFrame, _y: pd.Series, file_name: str = "") -> None:
     """Visualize the sampling with a PCA embedding."""
     pca = PCA(n_components=2)
     z = pca.fit_transform(_X)
@@ -46,6 +66,7 @@ def viz_pca(_X: pd.DataFrame, _y: pd.Series, file_name: str) -> None:
     pca_df["y"] = _y
     pca_df["comp-1"] = z[:, 0]
     pca_df["comp-2"] = z[:, 1]
+    pca_df = pca_df.sort_values(by="y", ascending=False)
 
     ax = sns.scatterplot(
         x="comp-1",
@@ -57,17 +78,15 @@ def viz_pca(_X: pd.DataFrame, _y: pd.Series, file_name: str) -> None:
     ax.set(title="Flux Data PCA Projection")
     handles, _ = ax.get_legend_handles_labels()
     ax.legend(handles, ["Single", "Binary"], loc="upper right")
-    plt.savefig(
-        os.path.join(config["plots_dir"], file_name)
-    )  # , dpi=config["savefig_dpi"])
+    if file_name != "":
+        plt.savefig(
+            os.path.join(config["plots_dir"], file_name),
+            dpi=config["savefig_dpi"],
+        )
     plt.show()
 
 
 if __name__ == "__main__":
-    df = get_all_spectra()
-    flux_df = df.drop(columns=config["spectral_type_col"])
-    X = flux_df.drop(columns=config["target_col"])
-    y = flux_df[config["target_col"]]
-    viz_pca(X, y, "normal_data.png")
-    X_res, y_res = oversample("smote", X, y)
-    viz_pca(X_res, y_res, "oversampled.png")
+    X, y = get_all_spectra()
+    X, y = get_spectral_type(X, y, 39, 40, False)
+    viz_pca(X, y, "39_44_pca.png")

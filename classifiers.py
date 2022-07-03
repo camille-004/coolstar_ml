@@ -1,3 +1,4 @@
+"""Run and evaluate baseline classifiers."""
 from typing import List, Tuple
 
 import pandas as pd
@@ -10,9 +11,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from feature_selection import feature_selection
-from load_data import get_all_spectra
-from resampling import oversample
 from utils import load_config
 
 config = load_config("config.yaml")
@@ -64,20 +62,3 @@ def baseline_classifier(
 def eval_clf(y_true: List, y_pred: List) -> None:
     """Print a classification report from true values and predicted values."""
     print(classification_report(y_true, y_pred, digits=4))
-
-
-if __name__ == "__main__":
-    df = get_all_spectra()
-    flux_df = df.drop(columns=config["spectral_type_col"])
-    X = flux_df.drop(columns=config["target_col"])
-    y = flux_df[config["target_col"]]
-    X_train, X_val, X_test, y_train, y_val, y_test = train_test_val_split(X, y)
-    X_train, y_train = oversample("smote", X_train, y_train)
-    print("Selecting features...")
-    X_train, X_test = feature_selection("anova", X_train, y_train, X_test)
-    print("Training classifier...")
-    train_pred, test_pred = baseline_classifier(
-        "rf", X_train, y_train, X_test, y_test
-    )
-    eval_clf(y_train, train_pred)
-    eval_clf(y_test, test_pred)
