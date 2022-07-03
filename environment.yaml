@@ -22,3 +22,4 @@ dependencies:
   - pip:
       - skfeature-chappers
       - scikit-learn
+      - imblearn
