@@ -12,3 +12,5 @@ pca_n_components: 2
 kmeans_n_clusters: 3
 subsample: 3
 n_folds: 5
+feature_selection_methods: ["rfe", "fisher", "anova"]
+feature_selection_k: 100

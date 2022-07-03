@@ -20,4 +20,5 @@ dependencies:
   - pylint
   - pytables
   - pip:
-      - tensorflow
+      - skfeature-chappers
+      - scikit-learn
