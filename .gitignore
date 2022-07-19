@@ -133,3 +133,6 @@ dmypy.json
 
 # Data file
 data/
+
+new.ipynb
+noise.ipynb
