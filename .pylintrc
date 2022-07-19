@@ -45,7 +45,7 @@ const-naming-style=UPPER_CASE
 
 # Minimum line length for functions/classes that require docstrings, shorter
 # ones are exempt.
-docstring-min-length=79
+docstring-min-length=100
 
 # Naming style matching correct function names.
 function-naming-style=snake_case
@@ -75,7 +75,7 @@ indent-after-paren=4
 indent-string='    '
 
 # Maximum number of characters on a single line.
-max-line-length=79
+max-line-length=100
 
 # Maximum number of lines in a module.
 max-module-lines=1000
@@ -87,3 +87,11 @@ single-line-class-stmt=no
 # Allow the body of an if to be on the same line as the test if there is no
 # else.
 single-line-if-stmt=no
+
+[DESIGN]
+
+# Maximum number of locals for function / method body
+max-locals=25
+
+# Maximum number of arguments for function / method
+max-args=10

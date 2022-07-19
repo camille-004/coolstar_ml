@@ -1,8 +1,8 @@
 data_dir: data
 plots_dir: plots
 file_name: spectral_templates_data_version_june20.h5
-single_key: singles
-binary_key: binaries
+singles_key: singles
+binaries_key: binaries
 wavegrid_key: wavegrid
 spectral_type_col: spectral_type
 binary_drop_cols: ["primary_type", "secondary_type"]
