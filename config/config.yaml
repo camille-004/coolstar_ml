@@ -1,6 +1,7 @@
 data_dir: data
 plots_dir: plots
-file_name: spectral_templates_data_version_june20.h5
+fp_june20: spectral_templates_data_version_june20.h5
+fp_july15: spectral_templates_data_version_july15.h5
 singles_key: singles
 binaries_key: binaries
 wavegrid_key: wavegrid
@@ -8,7 +9,7 @@ spectral_type_col: spectral_type
 binary_drop_cols: ["primary_type", "secondary_type"]
 binary_rename_col: system_type
 single_drop_cols: ["object_name"]
-target_col: binary
+target_col: single
 pca_n_components: 2
 kmeans_n_clusters: 3
 subsample: 3
@@ -20,3 +21,17 @@ val_size: 0.25
 classifiers: ["svc", "knn", "rf", "sgd"]
 oversample_methods: ["adasyn", "smote"]
 savefig_dpi: 1200
+
+singles_flux_key: singles_flux
+binaries_flux_key: binaries_flux
+singles_noise_key: singles_noise
+binaries_noise_key: binaries_noise
+singles_diff_key: singles_difference_spectrum
+binaries_diff_key: binaries_difference_spectrum
+merge_key: "object_name"
+noise_suffix: _noise
+diff_suffix: _diff
+primary_type_col: primary_type
+secondary_type_col: secondary_type
+zero_div_offset: 1e50
+chisq_rescale: 1e5

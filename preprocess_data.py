@@ -1,14 +1,18 @@
 """Load and preprocess data (works for July 15th version)."""
+import os
 from typing import Any, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
-# TODO Integrate config file
+from utils import load_config
+
+config = load_config("conig.yaml")
 
 # To get the chi-squared statistic according to Bardalez et. al.
 wavegrids = pd.read_hdf(
-    "data/spectral_templates_data_version_june20.h5", key="wavegrid"
+    os.path.join(config["data_dir"], config["fp_june20"]),
+    key=config["wavegrid_key"],
 )
 range_1 = wavegrids[(wavegrids >= 0.95) & (wavegrids <= 1.35)].dropna().index
 range_2 = wavegrids[(wavegrids >= 1.45) & (wavegrids <= 1.80)].dropna().index
@@ -22,32 +26,38 @@ def get_binary_single_dfs(_fp: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     :param _fp: path of data file
     :return: Merged single and binary DataFrames
     """
-    _singles_flux = pd.read_hdf(_fp, key="singles_flux")
-    _binaries_flux = pd.read_hdf(_fp, key="binaries_flux")
+    _singles_flux = pd.read_hdf(_fp, key=config["singles_flux_key"])
+    _binaries_flux = pd.read_hdf(_fp, key=config["binaries_flux_key"])
 
-    _singles_noise = pd.read_hdf(_fp, key="singles_noise")
-    _binaries_noise = pd.read_hdf(_fp, key="binaries_noise")
+    _singles_noise = pd.read_hdf(_fp, key=config["singles_noise_key"])
+    _binaries_noise = pd.read_hdf(_fp, key=config["binaries_noise_key"])
 
     _singles_difference_spectrum = pd.read_hdf(
-        _fp, key="singles_difference_spectrum"
+        _fp, key=config["singles_diff_key"]
     )
     _binaries_difference_spectrum = pd.read_hdf(
-        _fp, key="binaries_difference_spectrum"
+        _fp, key=config["binaries_diff_key"]
     )
 
-    _singles_flux_dedup = _singles_flux.drop_duplicates(subset="object_name")
-    _singles_noise_dedup = _singles_noise.drop_duplicates(subset="object_name")
+    _singles_flux_dedup = _singles_flux.drop_duplicates(
+        subset=config["merge_key"]
+    )
+    _singles_noise_dedup = _singles_noise.drop_duplicates(
+        subset=config["merge_key"]
+    )
     _singles_difference_spectrum_dedup = (
-        _singles_difference_spectrum.drop_duplicates(subset="object_name")
+        _singles_difference_spectrum.drop_duplicates(
+            subset=config["merge_key"]
+        )
     )
 
     _singles_merged = _singles_noise_dedup.merge(
         _singles_difference_spectrum_dedup,
-        on="object_name",
-        suffixes=("_noise", "_diff"),
+        on=config["merge_key"],
+        suffixes=(config["noise_suffix"], config["diff_suffix"]),
     )
     _singles_merged = _singles_merged.merge(
-        _singles_flux_dedup, on="object_name"
+        _singles_flux_dedup, config["merge_key"]
     )
     _singles_merged = _singles_merged.drop(
         columns=["spectral_type_noise", "spectral_type_diff"]
@@ -55,18 +65,17 @@ def get_binary_single_dfs(_fp: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     _binaries_merged = _binaries_noise.merge(
         _binaries_difference_spectrum,
-        on="object_name",
-        suffixes=("_noise", "_diff"),
+        on=config["merge_key"],
+        suffixes=(config["noise_suffix"], config["diff_suffix"]),
     )
-    _binaries_merged = _binaries_merged.merge(_binaries_flux, on="object_name")
+    _binaries_merged = _binaries_merged.merge(
+        _binaries_flux, on=config["merge_key"]
+    )
 
-    _binaries_merged = _binaries_merged.drop(
-        columns=["primary_type", "secondary_type"]
-    )
     _binaries_merged = _binaries_merged.rename(
-        columns={"system_type": "spectral_type"}
+        columns={config["binary_rename_col"]: config["spectral_type_col"]}
     )
-    _binaries_merged = _binaries_merged.drop(columns="object_name")
+    _binaries_merged = _binaries_merged.drop(columns=config["merge_key"])
 
     return _singles_merged, _binaries_merged
 
@@ -89,10 +98,10 @@ def filter_binaries(
     :return: Filtered binary DataFrame
     """
     return _binaries_df[
-        (_binaries_df["primary_type"] >= primary_min)
-        & (_binaries_df["primary_type"] <= primary_max)
-        & (_binaries_df["secondary_type"] >= secondary_min)
-        & (_binaries_df["secondary_type"] <= secondary_max)
+        (_binaries_df[config["primary_type_col"]] >= primary_min)
+        & (_binaries_df[config["primary_type_col"]] <= primary_max)
+        & (_binaries_df[config["secondary_type_col"]] >= secondary_min)
+        & (_binaries_df[config["secondary_type_col"]] <= secondary_max)
     ]
 
 
@@ -108,8 +117,8 @@ def filter_singles(
     :return: Filtered singles DataFrame
     """
     return _singles_df[
-        (_singles_df["spectral_type"] >= min_type)
-        & (_singles_df["spectral_type"] <= max_type)
+        (_singles_df[config["spectral_type_col"]] >= min_type)
+        & (_singles_df[config["spectral_type_col"]] <= max_type)
     ]
 
 
@@ -124,7 +133,7 @@ def get_spectral_data(
     :return: Spectral type, flux, noise, difference spectrum DataFrames for
     binaries and singles
     """
-    _singles_type = _singles_df["spectral_type"]
+    _singles_type = _singles_df[config["spectral_type_col"]]
     type_map = {"M": 10, "L": 20, "T": 30}
 
     def condition(val: str) -> Union[Union[int, str], Any]:
@@ -145,7 +154,7 @@ def get_spectral_data(
     ]
 
     # Assuming binaries are already filtered by primary and secondary type groupings
-    _binaries_type = _binaries_df["spectral_type"]
+    _binaries_type = _binaries_df[config["spectral_type_col"]]
     _binaries_flux = _binaries_df.loc[
         :, ~_binaries_df.columns.str.contains("noise|diff|type|name")
     ]
@@ -196,7 +205,9 @@ def compute_snr(
     :return: SNR for each spectrum
     """
     return np.nanmedian(
-        flux_df.values / ((noise_df.abs() + 1e-50).values * scale), axis=1
+        flux_df.values
+        / ((noise_df.abs() + config["zero_div_offset"]).values * scale),
+        axis=1,
     )
 
 
@@ -216,30 +227,51 @@ def compute_chisq(
     :return: DataFrame of chi-squared statistics for three wavelength ranges
     """
     if bartolez:
-        diff_range_1 = diff_df[["flux_" + str(i) + "_diff" for i in range_1]]
-        diff_range_2 = diff_df[["flux_" + str(i) + "_diff" for i in range_2]]
-        diff_range_3 = diff_df[["flux_" + str(i) + "_diff" for i in range_3]]
+        diff_range_1 = diff_df[
+            ["flux_" + str(i) + config["diff_suffix"] for i in range_1]
+        ]
+        diff_range_2 = diff_df[
+            ["flux_" + str(i) + config["diff_suffix"] for i in range_2]
+        ]
+        diff_range_3 = diff_df[
+            ["flux_" + str(i) + config["diff_suffix"] for i in range_3]
+        ]
 
         noise_range_1 = noise_df[
-            ["flux_" + str(i) + "_noise" for i in range_1]
+            ["flux_" + str(i) + config["noise_suffix"] for i in range_1]
         ]
         noise_range_2 = noise_df[
-            ["flux_" + str(i) + "_noise" for i in range_2]
+            ["flux_" + str(i) + config["noise_suffix"] for i in range_2]
         ]
         noise_range_3 = noise_df[
-            ["flux_" + str(i) + "_noise" for i in range_3]
+            ["flux_" + str(i) + config["noise_suffix"] for i in range_3]
         ]
 
         chisq_df = pd.DataFrame()
         chisq_df["chisq_095_135"] = (
-            (scale * diff_range_1.values / (noise_range_1.values + 1e-50)) ** 2
-        ).sum(axis=1) / 1e5
+            (
+                scale
+                * diff_range_1.values
+                / (noise_range_1.values + config["zero_div_offset"])
+            )
+            ** 2
+        ).sum(axis=1) / config["chisq_rescale"]
         chisq_df["chisq_145_180"] = (
-            (scale * diff_range_2.values / (noise_range_2.values + 1e-50)) ** 2
-        ).sum(axis=1) / 1e5
+            (
+                scale
+                * diff_range_2.values
+                / (noise_range_2.values + config["zero_div_offset"])
+            )
+            ** 2
+        ).sum(axis=1) / config["chisq_rescale"]
         chisq_df["chisq_200_235"] = (
-            (scale * diff_range_3.values / (noise_range_3.values + 1e-50)) ** 2
-        ).sum(axis=1) / 1e5
+            (
+                scale
+                * diff_range_3.values
+                / (noise_range_3.values + config["zero_div_offset"])
+            )
+            ** 2
+        ).sum(axis=1) / config["chisq_rescale"]
         return chisq_df
 
     return pd.Series(
@@ -379,8 +411,8 @@ def feature_engineering(
         [binaries_with_noise, _binaries_type], axis=1
     )
 
-    singles_with_noise["single"] = 1
-    binaries_with_noise["single"] = 0
+    singles_with_noise[config["target_col"]] = 1
+    binaries_with_noise[config["target_col"]] = 0
     df_preprocessed = (
         pd.concat([binaries_with_noise, singles_with_noise])
         .sample(frac=1)
