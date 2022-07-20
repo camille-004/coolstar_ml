@@ -12,6 +12,6 @@ def load_config(config_name: str) -> Dict[Any, Any]:
     with open(
         os.path.join(CONFIG_PATH, config_name), encoding="utf-8"
     ) as file:
-        config = yaml.safe_load(file)
+        config = yaml.safe_load(file.read())
 
     return config

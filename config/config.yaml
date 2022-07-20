@@ -10,17 +10,6 @@ binary_drop_cols: ["primary_type", "secondary_type"]
 binary_rename_col: system_type
 single_drop_cols: ["object_name"]
 target_col: single
-pca_n_components: 2
-kmeans_n_clusters: 3
-subsample: 3
-n_folds: 5
-feature_selection_methods: ["rfe", "fisher", "anova"]
-feature_selection_k: 100
-test_size: 0.2
-val_size: 0.25
-classifiers: ["svc", "knn", "rf", "sgd"]
-oversample_methods: ["adasyn", "smote"]
-savefig_dpi: 1200
 
 singles_flux_key: singles_flux
 binaries_flux_key: binaries_flux
@@ -33,5 +22,11 @@ noise_suffix: _noise
 diff_suffix: _diff
 primary_type_col: primary_type
 secondary_type_col: secondary_type
-zero_div_offset: 1e50
-chisq_rescale: 1e5
+zero_div_offset: 1.0e-50
+chisq_rescale: 1.0e-5
+noise_scale: 5
+seaborn_style: whitegrid
+seaborn_palette: hls
+seaborn_figsize: [16, 6]
+savefig.dpi: 300
+figure.dpi: 300

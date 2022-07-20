@@ -4,7 +4,6 @@ channels:
   - conda-forge
 dependencies:
   - isort
-  - mypy
   - flake8
   - black
   - python=3.9

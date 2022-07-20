@@ -7,7 +7,7 @@ import pandas as pd
 
 from utils import load_config
 
-config = load_config("conig.yaml")
+config = load_config("config.yaml")
 
 # To get the chi-squared statistic according to Bardalez et. al.
 wavegrids = pd.read_hdf(
@@ -57,7 +57,7 @@ def get_binary_single_dfs(_fp: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         suffixes=(config["noise_suffix"], config["diff_suffix"]),
     )
     _singles_merged = _singles_merged.merge(
-        _singles_flux_dedup, config["merge_key"]
+        _singles_flux_dedup, on=config["merge_key"]
     )
     _singles_merged = _singles_merged.drop(
         columns=["spectral_type_noise", "spectral_type_diff"]
@@ -275,7 +275,10 @@ def compute_chisq(
         return chisq_df
 
     return pd.Series(
-        ((diff_df.values / (noise_df.values + 10e-50)) ** 2).sum(axis=1)
+        (
+            (diff_df.values / (noise_df.values + config["zero_div_offset"]))
+            ** 2
+        ).sum(axis=1)
     )
 
 
@@ -289,12 +292,18 @@ def compute_chisq_std(
     :param _binaries_df: DataFrame of binary stars with chi-squared spectrum difference statistics.
     :return:
     """
-    _singles_std = _singles_df[
-        ["chisq_095_135", "chisq_145_180", "chisq_200_235"]
-    ].std(axis=1)
-    _binaries_std = _binaries_df[
-        ["chisq_095_135", "chisq_145_180", "chisq_200_235"]
-    ].std(axis=1)
+    _singles_std = (
+        _singles_df[["chisq_095_135", "chisq_145_180", "chisq_200_235"]].std(
+            axis=1
+        )
+        * config["chisq_rescale"]
+    )
+    _binaries_std = (
+        _binaries_df[["chisq_095_135", "chisq_145_180", "chisq_200_235"]].std(
+            axis=1
+        )
+        * config["chisq_rescale"]
+    )
     return _singles_std, _binaries_std
 
 
