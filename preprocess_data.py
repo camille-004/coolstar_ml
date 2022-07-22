@@ -226,7 +226,6 @@ def compute_chisq(
     :param bartolez: Whether to use wavelength binning from Bartolez et. al.
     :return: DataFrame of chi-squared statistics for three wavelength ranges
     """
-    assert scale and isinstance(scale, float)
     if bartolez:
         diff_range_1 = diff_df[
             ["flux_" + str(i) + config["diff_suffix"] for i in range_1]
@@ -312,12 +311,12 @@ def feature_engineering(
     _singles: pd.DataFrame,
     _binaries: pd.DataFrame,
     scale: Optional[float],
-    _add_noise: bool = True,
-    snr: bool = True,
-    add_template_diffs: bool = True,
-    chisq: bool = True,
-    bartolez_chisq: bool = True,
-    chisq_std: bool = True,
+    _add_noise: bool,
+    snr: bool,
+    add_template_diffs: bool,
+    chisq: bool,
+    bartolez_chisq: bool,
+    chisq_std: bool,
 ) -> pd.DataFrame:
     """
     Add noise to spectra, optionally calculate SNR for binning, add spectrum differences, compute

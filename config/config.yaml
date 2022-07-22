@@ -24,7 +24,7 @@ primary_type_col: primary_type
 secondary_type_col: secondary_type
 zero_div_offset: 1.0e-50
 chisq_rescale: 1.0e-5
-noise_scale: 5
+noise_scale: 5.0
 seaborn_style: whitegrid
 seaborn_palette: hls
 seaborn_figsize: [16, 6]
