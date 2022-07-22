@@ -1,6 +1,6 @@
 """Load and preprocess data (works for July 15th version)."""
 import os
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -214,7 +214,7 @@ def compute_snr(
 def compute_chisq(
     diff_df: pd.DataFrame,
     noise_df: pd.DataFrame,
-    scale: float,
+    scale: Optional[float],
     bartolez: bool = True,
 ) -> Union[pd.Series, pd.DataFrame]:
     """
@@ -226,6 +226,7 @@ def compute_chisq(
     :param bartolez: Whether to use wavelength binning from Bartolez et. al.
     :return: DataFrame of chi-squared statistics for three wavelength ranges
     """
+    assert scale and isinstance(scale, float)
     if bartolez:
         diff_range_1 = diff_df[
             ["flux_" + str(i) + config["diff_suffix"] for i in range_1]
@@ -310,7 +311,8 @@ def compute_chisq_std(
 def feature_engineering(
     _singles: pd.DataFrame,
     _binaries: pd.DataFrame,
-    scale: float,
+    scale: Optional[float],
+    _add_noise: bool = True,
     snr: bool = True,
     add_template_diffs: bool = True,
     chisq: bool = True,
@@ -325,13 +327,14 @@ def feature_engineering(
     :param _singles: Input singles DataFrame
     :param _binaries: Input binaries DataFrame
     :param scale: Noise scaling (and chi-squared if using)
+    :param _add_noise: Whether or not to add noise
     :param snr: Whether to calculate signal-to-noise ratio
     :param add_template_diffs: Whether to add in the difference spectra as a feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
     :param bartolez_chisq: Whether to use Bartolez binning for chi-squared calculation
     :param chisq_std: Whether to add standard deviation feature (if using Bartolez binning for
     chi-squared calculation)
-    :return:
+    :return: Preprocessed DataFrame
     """
     if chisq_std or bartolez_chisq:
         assert chisq
@@ -348,49 +351,40 @@ def feature_engineering(
     ) = get_spectral_data(_singles, _binaries)
 
     # Add the noise
-    singles_with_noise = add_noise(_singles_flux, _singles_noise, scale)
-    binaries_with_noise = add_noise(_binaries_flux, _binaries_noise, scale)
+    if _add_noise:
+        assert scale
+        _singles = add_noise(_singles_flux, _singles_noise, scale)
+        _binaries = add_noise(_binaries_flux, _binaries_noise, scale)
 
     # Convert from NP array to DataFrame
-    singles_with_noise = pd.DataFrame(
-        singles_with_noise, columns=_binaries_flux.columns
-    )
-    binaries_with_noise = pd.DataFrame(
-        binaries_with_noise, columns=_binaries_flux.columns
-    )
+    _singles = pd.DataFrame(_singles, columns=_binaries_flux.columns)
+    _binaries = pd.DataFrame(_binaries, columns=_binaries_flux.columns)
 
     # Compute signal-to-noise ratio (NOT TO USE AS A FEATURE, but binning for different models)
     if snr:
-        singles_with_noise.loc[:, "snr"] = compute_snr(
-            _singles_flux, _singles_noise, scale
-        )
-        binaries_with_noise["snr"] = compute_snr(
-            _binaries_flux, _binaries_noise, scale
-        )
+        assert _add_noise and scale
+        _singles["snr"] = compute_snr(_singles_flux, _singles_noise, scale)
+        _binaries["snr"] = compute_snr(_binaries_flux, _binaries_noise, scale)
 
     # Add the difference
     if add_template_diffs:
         assert _binaries_diffs is not None and _singles_diffs is not None
-        singles_with_noise = pd.concat(
-            [singles_with_noise, _singles_diffs], axis=1
-        )
-        binaries_with_noise = pd.concat(
-            [binaries_with_noise, _binaries_diffs], axis=1
-        )
+        _singles = pd.concat([_singles, _singles_diffs], axis=1)
+        _binaries = pd.concat([_binaries, _binaries_diffs], axis=1)
 
     # Calculate chi-squared between difference spectra and noise
     if chisq:
         if bartolez_chisq:
-            singles_with_noise = pd.concat(
+            _singles = pd.concat(
                 [
-                    singles_with_noise,
+                    _singles,
                     compute_chisq(_singles_diffs, _singles_noise, scale, True),
                 ],
                 axis=1,
             )
-            binaries_with_noise = pd.concat(
+            _binaries = pd.concat(
                 [
-                    binaries_with_noise,
+                    _binaries,
                     compute_chisq(
                         _binaries_diffs, _binaries_noise, scale, True
                     ),
@@ -398,10 +392,10 @@ def feature_engineering(
                 axis=1,
             )
         else:
-            singles_with_noise["chisq"] = compute_chisq(
+            _singles["chisq"] = compute_chisq(
                 _singles_diffs, _singles_noise, scale
             )
-            binaries_with_noise["chisq"] = compute_chisq(
+            _binaries["chisq"] = compute_chisq(
                 _binaries_diffs, _binaries_noise, scale
             )
 
@@ -409,22 +403,16 @@ def feature_engineering(
         # wavelength ranges
         if chisq_std:
             assert bartolez_chisq
-            singles_std, binaries_std = compute_chisq_std(
-                singles_with_noise, binaries_with_noise
-            )
-            singles_with_noise["chisq_std"] = singles_std
-            binaries_with_noise["chisq_std"] = binaries_std
+            singles_std, binaries_std = compute_chisq_std(_singles, _binaries)
+            _singles["chisq_std"] = singles_std
+            _binaries["chisq_std"] = binaries_std
 
-    singles_with_noise = pd.concat([singles_with_noise, _singles_type], axis=1)
-    binaries_with_noise = pd.concat(
-        [binaries_with_noise, _binaries_type], axis=1
-    )
+    _singles = pd.concat([_singles, _singles_type], axis=1)
+    _binaries = pd.concat([_binaries, _binaries_type], axis=1)
 
-    singles_with_noise[config["target_col"]] = 1
-    binaries_with_noise[config["target_col"]] = 0
+    _singles[config["target_col"]] = 1
+    _binaries[config["target_col"]] = 0
     df_preprocessed = (
-        pd.concat([binaries_with_noise, singles_with_noise])
-        .sample(frac=1)
-        .reset_index(drop=True)
+        pd.concat([_binaries, _singles]).sample(frac=1).reset_index(drop=True)
     )
     return df_preprocessed
