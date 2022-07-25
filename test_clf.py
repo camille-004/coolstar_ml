@@ -1,9 +1,11 @@
 """Load the data with specified preprocessing/FE steps and test a classifier."""
 import os
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
 from feature_engineering import feature_engineering
@@ -173,20 +175,46 @@ def split_data(
     """
     X = _df.drop(columns=config["target_col"])
     y = _df[config["target_col"]]
-    X_train, X_test, y_train, y_test = train_test_split(
+    _X_train, _X_test, _y_train, _y_test = train_test_split(
         X, y, test_size=config["test_size"], stratify=y
     )
 
     if undersample:
-        df_train = pd.concat([X_train, y_train], axis=1)
+        df_train = pd.concat([_X_train, _y_train], axis=1)
         df_train = random_undersample(df_train)
-        X_train = df_train.drop(columns=config["target_col"])
-        y_train = df_train[config["target_col"]]
+        _X_train = df_train.drop(columns=config["target_col"])
+        _y_train = df_train[config["target_col"]]
 
-    return X_train, X_test, y_train, y_test
+    return _X_train, _X_test, _y_train, _y_test
 
 
-# %%
+def test_rf(
+    _X_train: pd.DataFrame,
+    _X_test: pd.DataFrame,
+    _y_train: pd.Series,
+    _y_test: pd.Series,
+    rf_params: Optional[Dict],
+) -> None:
+    """
+    Fit a RandomForestClassifier on the training data and print the classification report on the
+    training and test sets.
+    :param _X_train: Input training features
+    :param _X_test: Input testing features
+    :param _y_train: Input training label
+    :param _y_test: Input testing label
+    :param rf_params: Dictionary of hyperparameters for the RandomForestClassifier
+    :return:
+    """
+    clf = RandomForestClassifier(**rf_params)
+    clf.fit(_X_train, _y_train)
+    pred_train = clf.predict(_X_train)
+    pred_test = clf.predict(_X_test)
+    print("Train:")
+    print(classification_report(_y_train, pred_train) + "\n")
+    print("Test:")
+    print(classification_report(_y_test, pred_test))
+
+
 df = prepare_data(
     f_name=config["fp_july15"],
     binaries_filter=(17, 24, 25, 31),
@@ -199,3 +227,5 @@ df = prepare_data(
     bartolez_chisq=True,
     chisq_std=True,
 )
+
+X_train, X_test, y_train, y_test = split_data(df)
