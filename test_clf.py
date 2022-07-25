@@ -1,14 +1,62 @@
 """Load the data with specified preprocessing/FE steps and test a classifier."""
-from typing import Tuple
+import os
+from typing import Optional, Tuple
 
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.model_selection import train_test_split
 
-from preprocess_data import prepare_data
+from feature_engineering import feature_engineering
+from preprocess_data import get_binary_single_dfs, type_to_num
 from utils import load_config
 
 config = load_config("config.yaml")
+
+
+def filter_binaries(
+    _binaries_df: pd.DataFrame,
+    primary_min: int,
+    primary_max: int,
+    secondary_min: int,
+    secondary_max: int,
+) -> pd.DataFrame:
+    """
+    Filter binary stars by primary and secondary spectral types.
+
+    :param _binaries_df: DataFrame containing binary stars with spectral types
+    :param primary_min: Minimum desired primary type
+    :param primary_max: Maximum desired primary type
+    :param secondary_min: Minimum desired secondary type
+    :param secondary_max: Maximum desire secondary type
+    :return: Filtered binary DataFrame
+    """
+    return _binaries_df[
+        (_binaries_df[config["primary_type_col"]] >= primary_min)
+        & (_binaries_df[config["primary_type_col"]] <= primary_max)
+        & (_binaries_df[config["secondary_type_col"]] >= secondary_min)
+        & (_binaries_df[config["secondary_type_col"]] <= secondary_max)
+    ]
+
+
+def filter_singles(
+    _singles_df: pd.DataFrame, min_type: int, max_type: int
+) -> pd.DataFrame:
+    """
+    Filter single stars by spectral type.
+
+    :param _singles_df: DataFrame containing single stars with spectral type
+    :param min_type: Minimum desired spectral type
+    :param max_type: Maximum desired spectral type
+    :return: Filtered singles DataFrame
+    """
+    _singles_df[config["spectral_type_col"]] = _singles_df[
+        config["spectral_type_col"]
+    ].apply(type_to_num)
+
+    return _singles_df[
+        (_singles_df[config["spectral_type_col"]] >= min_type)
+        & (_singles_df[config["spectral_type_col"]] <= max_type)
+    ]
 
 
 def filter_snr(
@@ -24,6 +72,71 @@ def filter_snr(
     """
     assert "snr" in _df.columns
     return _df[(_df["snr"] >= snr_min) & (_df["snr"] <= snr_max)]
+
+
+def prepare_data(
+    f_name: str,
+    binaries_filter: Optional[Tuple[int, int, int, int]],
+    singles_filter: Optional[Tuple[int, int]],
+    scale: float,
+    _add_noise: bool,
+    snr: bool,
+    template_diffs: bool,
+    chisq: bool,
+    bartolez_chisq: bool,
+    chisq_std: bool,
+) -> pd.DataFrame:
+    """
+    Load the fully cleaned and preprocessed dataset.
+
+    :param f_name: Filename of raw dataset
+    :param binaries_filter: Conditions for filtering binaries by primary and secondary type,
+    optional
+    :param singles_filter: Conditions for filtering singles by spectral type, optional
+    :param scale: Noise scaling (and chi-squared if using)
+    :param _add_noise: Whether to add noise
+    :param snr: Whether to calculate signal-to-noise ratio
+    :param template_diffs: Whether to add in the difference spectra as a feature
+    :param chisq: Whether to calculate the chi-squared statistic for spectra
+    :param bartolez_chisq: Whether to use Bartolez binning for chi-squared calculation
+    :param chisq_std: Whether to add standard deviation feature (if using Bartolez binning for
+    chi-squared calculation)
+    :return: Prepared DataFrame
+    """
+    assert f_name in os.listdir(config["data_dir"])
+    _singles, _binaries = get_binary_single_dfs(
+        os.path.join(config["data_dir"], f_name)
+    )
+    if binaries_filter:
+        (
+            primaries_min,
+            primaries_max,
+            secondaries_min,
+            secondaries_max,
+        ) = binaries_filter
+        _binaries = filter_binaries(
+            _binaries,
+            primaries_min,
+            primaries_max,
+            secondaries_min,
+            secondaries_max,
+        )
+    if singles_filter:
+        type_min, type_max = singles_filter
+        _singles = filter_singles(_singles, type_min, type_max)
+    _df = feature_engineering(
+        _singles,
+        _binaries,
+        scale=scale,
+        _add_noise=_add_noise,
+        snr=snr,
+        add_template_diffs=template_diffs,
+        chisq=chisq,
+        bartolez_chisq=bartolez_chisq,
+        chisq_std=chisq_std,
+    )
+    print(f"DataFrame shape: {_df.shape}")
+    return _df
 
 
 def random_undersample(_df: pd.DataFrame) -> pd.DataFrame:
@@ -71,9 +184,6 @@ def split_data(
         y_train = df_train[config["target_col"]]
 
     return X_train, X_test, y_train, y_test
-
-
-# def test_rf(X_train, y_train, X_test, y_test):
 
 
 # %%
