@@ -1,6 +1,6 @@
 """Load the data with specified preprocessing/FE steps and test a classifier."""
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler
@@ -78,14 +78,14 @@ def filter_snr(
 
 def prepare_data(
     f_name: str,
-    binaries_filter: Optional[Tuple[int, int, int, int]],
-    singles_filter: Optional[Tuple[int, int]],
+    binaries_filter: Optional[List[str]],
+    singles_filter: Optional[List[str]],
     scale: float,
     _add_noise: bool,
     snr: bool,
     template_diffs: bool,
     chisq: bool,
-    bartolez_chisq: bool,
+    bardalez_chisq: bool,
     chisq_std: bool,
 ) -> pd.DataFrame:
     """
@@ -100,8 +100,8 @@ def prepare_data(
     :param snr: Whether to calculate signal-to-noise ratio
     :param template_diffs: Whether to add in the difference spectra as a feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
-    :param bartolez_chisq: Whether to use Bartolez binning for chi-squared calculation
-    :param chisq_std: Whether to add standard deviation feature (if using Bartolez binning for
+    :param bardalez_chisq: Whether to use Bardalez binning for chi-squared calculation
+    :param chisq_std: Whether to add standard deviation feature (if using bardalez binning for
     chi-squared calculation)
     :return: Prepared DataFrame
     """
@@ -110,6 +110,7 @@ def prepare_data(
         os.path.join(config["data_dir"], f_name)
     )
     if binaries_filter:
+        binaries_filter = map(type_to_num, binaries_filter)
         (
             primaries_min,
             primaries_max,
@@ -124,6 +125,7 @@ def prepare_data(
             secondaries_max,
         )
     if singles_filter:
+        singles_filter = map(type_to_num, singles_filter)
         type_min, type_max = singles_filter
         _singles = filter_singles(_singles, type_min, type_max)
     _df = feature_engineering(
@@ -134,7 +136,7 @@ def prepare_data(
         snr=snr,
         add_template_diffs=template_diffs,
         chisq=chisq,
-        bartolez_chisq=bartolez_chisq,
+        bardalez_chisq=bardalez_chisq,
         chisq_std=chisq_std,
     )
     print(f"DataFrame shape: {_df.shape}")
@@ -173,6 +175,7 @@ def split_data(
     set
     :return: Training and testing X and y as a tuple
     """
+    _df = _df.dropna()
     X = _df.drop(columns=config["target_col"])
     y = _df[config["target_col"]]
     _X_train, _X_test, _y_train, _y_test = train_test_split(
@@ -193,7 +196,7 @@ def test_rf(
     _X_test: pd.DataFrame,
     _y_train: pd.Series,
     _y_test: pd.Series,
-    rf_params: Optional[Dict],
+    rf_params: Optional[Dict] = None,
 ) -> None:
     """
     Fit a RandomForestClassifier on the training data and print the classification report on the
@@ -205,7 +208,10 @@ def test_rf(
     :param rf_params: Dictionary of hyperparameters for the RandomForestClassifier
     :return:
     """
-    clf = RandomForestClassifier(**rf_params)
+    if rf_params:
+        clf = RandomForestClassifier(**rf_params)
+    else:
+        clf = RandomForestClassifier()
     clf.fit(_X_train, _y_train)
     pred_train = clf.predict(_X_train)
     pred_test = clf.predict(_X_test)
@@ -217,15 +223,16 @@ def test_rf(
 
 df = prepare_data(
     f_name=config["fp_july15"],
-    binaries_filter=(17, 24, 25, 31),
-    singles_filter=(17, 24),
+    binaries_filter=["M7", "L7", "T0", "T6"],
+    singles_filter=["M7", "L4"],
     scale=config["noise_scale"],
-    _add_noise=True,
-    snr=True,
-    template_diffs=True,
-    chisq=True,
-    bartolez_chisq=True,
-    chisq_std=True,
+    _add_noise=False,
+    snr=False,
+    template_diffs=False,
+    chisq=False,
+    bardalez_chisq=False,
+    chisq_std=False,
 )
 
 X_train, X_test, y_train, y_test = split_data(df)
+test_rf(X_train, X_test, y_train, y_test)

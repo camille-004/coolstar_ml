@@ -58,18 +58,18 @@ def compute_chisq(
     diff_df: pd.DataFrame,
     noise_df: pd.DataFrame,
     scale: Optional[float],
-    bartolez: bool = True,
+    bardalez: bool = True,
 ) -> Union[pd.Series, pd.DataFrame]:
     """
-    Compute chi-squared statistics on same wavelengths as in Bartolez et. al. or on all wavelengths
+    Compute chi-squared statistics on same wavelengths as in Bardalez et. al. or on all wavelengths
 
     :param diff_df: DataFrame of spectrum difference with best-fit template
     :param noise_df: DataFrame of uncertainties
     :param scale: Uncertainty scaling factor
-    :param bartolez: Whether to use wavelength binning from Bartolez et. al.
+    :param bardalez: Whether to use wavelength binning from Bardalez et. al.
     :return: DataFrame of chi-squared statistics for three wavelength ranges
     """
-    if bartolez:
+    if bardalez:
         diff_range_1 = diff_df[
             ["flux_" + str(i) + config["diff_suffix"] for i in range_1]
         ]
@@ -129,7 +129,7 @@ def compute_chisq_std(
     _singles_df: pd.DataFrame, _binaries_df: pd.DataFrame
 ) -> Tuple[pd.Series, pd.Series]:
     """
-    Compute standard deviation of wavelength chi-squared statistics if using Bartolez binning.
+    Compute standard deviation of wavelength chi-squared statistics if using Bardalez binning.
 
     :param _singles_df: DataFrame of single stars with chi-squared spectrum difference statistics.
     :param _binaries_df: DataFrame of binary stars with chi-squared spectrum difference statistics.
@@ -158,13 +158,13 @@ def feature_engineering(
     snr: bool,
     add_template_diffs: bool,
     chisq: bool,
-    bartolez_chisq: bool,
+    bardalez_chisq: bool,
     chisq_std: bool,
 ) -> pd.DataFrame:
     """
     Add noise to spectra, optionally calculate SNR for binning, add spectrum differences, compute
     chi-squared statistics with differences, and take the standard deviation of the ranges if using
-    Bartolez wavelength binning.
+    Bardalez wavelength binning.
 
     :param _singles: Input singles DataFrame
     :param _binaries: Input binaries DataFrame
@@ -173,13 +173,15 @@ def feature_engineering(
     :param snr: Whether to calculate signal-to-noise ratio
     :param add_template_diffs: Whether to add in the difference spectra as a feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
-    :param bartolez_chisq: Whether to use Bartolez binning for chi-squared calculation
-    :param chisq_std: Whether to add standard deviation feature (if using Bartolez binning for
+    :param bardalez_chisq: Whether to use Bardalez binning for chi-squared calculation
+    :param chisq_std: Whether to add standard deviation feature (if using Bardalez binning for
     chi-squared calculation)
     :return: Preprocessed DataFrame
     """
-    if chisq_std or bartolez_chisq:
-        assert chisq
+    if chisq_std or bardalez_chisq:
+        assert (
+            chisq
+        ), "You must set chisq to True if you want to compute it with the Bardalez method."
 
     (
         _singles_type,
@@ -194,7 +196,7 @@ def feature_engineering(
 
     # Add the noise
     if _add_noise:
-        assert scale
+        assert scale, "You must provide a scale to add noise."
         _singles = add_noise(_singles_flux, _singles_noise, scale)
         _binaries = add_noise(_binaries_flux, _binaries_noise, scale)
 
@@ -204,19 +206,23 @@ def feature_engineering(
 
     # Compute signal-to-noise ratio (NOT TO USE AS A FEATURE, but binning for different models)
     if snr:
-        assert _add_noise and scale
+        assert (
+            _add_noise and scale
+        ), "You must provide values for _add_noise and scale to compute SNR."
         _singles["snr"] = compute_snr(_singles_flux, _singles_noise, scale)
         _binaries["snr"] = compute_snr(_binaries_flux, _binaries_noise, scale)
 
     # Add the difference
     if add_template_diffs:
-        assert _binaries_diffs is not None and _singles_diffs is not None
+        assert (
+            _singles_diffs is not None and _binaries_diffs is not None
+        ), "You must provide DataFrames for singles_diffs and binaries_diffs."
         _singles = pd.concat([_singles, _singles_diffs], axis=1)
         _binaries = pd.concat([_binaries, _binaries_diffs], axis=1)
 
     # Calculate chi-squared between difference spectra and noise
     if chisq:
-        if bartolez_chisq:
+        if bardalez_chisq:
             _singles = pd.concat(
                 [
                     _singles,
@@ -244,7 +250,10 @@ def feature_engineering(
         # Calculate the standard deviation between the chi-squared statistics at the three
         # wavelength ranges
         if chisq_std:
-            assert bartolez_chisq
+            assert bardalez_chisq, (
+                "You must set bardalez_chisq to True if you want to compute the chisq standard "
+                "deviation."
+            )
             singles_std, binaries_std = compute_chisq_std(_singles, _binaries)
             _singles["chisq_std"] = singles_std
             _binaries["chisq_std"] = binaries_std
