@@ -19,6 +19,19 @@ range_2 = wavegrids[(wavegrids >= 1.45) & (wavegrids <= 1.80)].dropna().index
 range_3 = wavegrids[(wavegrids >= 2.00) & (wavegrids <= 2.35)].dropna().index
 
 
+def type_to_num(val: str) -> Union[Union[int, str], Any]:
+    """
+    Helper function to map spectral types to numbers.
+
+    :param val: Input spectral type
+    :return: Output number
+    """
+    type_map = {"M": 10, "L": 20, "T": 30}
+    if isinstance(val, str):
+        return int(val[1]) + type_map[val[0]]
+    return val
+
+
 def get_binary_single_dfs(_fp: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load, merge, and deduplicate data. Meant to work on July 15th version.
@@ -116,6 +129,10 @@ def filter_singles(
     :param max_type: Maximum desired spectral type
     :return: Filtered singles DataFrame
     """
+    _singles_df[config["spectral_type_col"]] = _singles_df[
+        config["spectral_type_col"]
+    ].apply(type_to_num)
+
     return _singles_df[
         (_singles_df[config["spectral_type_col"]] >= min_type)
         & (_singles_df[config["spectral_type_col"]] <= max_type)
@@ -134,14 +151,8 @@ def get_spectral_data(
     binaries and singles
     """
     _singles_type = _singles_df[config["spectral_type_col"]]
-    type_map = {"M": 10, "L": 20, "T": 30}
-
-    def condition(val: str) -> Union[Union[int, str], Any]:
-        if isinstance(val, str):
-            return int(val[1]) + type_map[val[0]]
-        return val
-
-    _singles_type = _singles_type.apply(condition)
+    if _singles_type.dtypes in (object, np.object_):
+        _singles_type = _singles_type.apply(type_to_num)
 
     _singles_flux = _singles_df.loc[
         :, ~_singles_df.columns.str.contains("noise|diff|type|name")

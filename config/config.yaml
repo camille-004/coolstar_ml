@@ -30,3 +30,4 @@ seaborn_palette: hls
 seaborn_figsize: [16, 6]
 savefig.dpi: 300
 figure.dpi: 300
+test_size: 0.2
