@@ -3,6 +3,8 @@ plots_dir: plots
 fp_june20: spectral_templates_data_version_june20.h5
 fp_july15: spectral_templates_data_version_july15.h5
 fp_july26: spectral_templates_data_version_jul26.h5
+fp_aug3: spectral_templates_aug3_balanced.h5
+
 singles_key: singles
 binaries_key: binaries
 wavegrid_key: wavegrid
@@ -25,7 +27,6 @@ primary_type_col: primary_type
 secondary_type_col: secondary_type
 zero_div_offset: 1.0e-50
 chisq_rescale: 1.0e-5
-noise_scale: 5
 seaborn_style: whitegrid
 seaborn_palette: hls
 seaborn_figsize: [16, 6]
@@ -34,3 +35,15 @@ figure.dpi: 300
 test_size: 0.2
 
 snr_ranges: [[0, 3], [3, 5], [5, 10], [10, 20], [20, 1000]]
+noise_scale_low: 0.02
+noise_scale_high: 0.05
+diff_prefix: diff_
+noise_prefix: noise_
+
+primary_min: M0.0
+primary_max: T9.0
+secondary_min: M0.0
+secondary_max: T9.0
+
+single_min: M0.0
+single_max: T9.0

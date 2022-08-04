@@ -83,11 +83,28 @@ def get_binary_single_dfs(_fp: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return _singles_merged, _binaries_merged
 
 
+def get_binaries_single_dfs_aug_3(
+    _fp: str,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Get August 3 version of singles and binaries.
+
+    :param _fp: Path to August 3 data
+    :return: Tuple of singles and binaries DataFrames
+    """
+    _singles = pd.read_hdf(_fp, key=config["singles_key"])
+    _binaries = pd.read_hdf(_fp, key=config["binaries_key"])
+    _binaries = _binaries.rename(
+        columns={config["binary_rename_col"]: config["spectral_type_col"]}
+    )
+    return _singles, _binaries
+
+
 def get_spectral_data(
     _singles_df: pd.DataFrame, _binaries_df: pd.DataFrame
 ) -> Tuple[Union[pd.Series, pd.DataFrame], ...]:
     """
-    Get different measurements from merged and deduplicated data.
+    Get different measurements from merged and deduplicated data. For July 15th version.
 
     :param _singles_df: DataFrame of single stars
     :param _binaries_df: DataFrame of binary stars

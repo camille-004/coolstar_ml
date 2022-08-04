@@ -43,13 +43,10 @@ def plot_snr_class_dist(_snr_ranges: List[List[int]]) -> None:
             f_name=config["fp_july15"],
             binaries_filter=["M0", "T9", "M0", "T9"],
             singles_filter=["M0", "T9"],
-            scale=config["noise_scale"],
             _add_noise=True,
             snr=True,
             template_diffs=False,
             chisq=False,
-            bardalez_chisq=False,
-            chisq_std=False,
         )
         snr_min, snr_max = i
         df = filter_snr(df, snr_min, snr_max)
@@ -86,7 +83,9 @@ def plot_model_metrics_snr(
         n_test_singles.append(
             y_test.sum()
         )  # Get number of singles in test set
-        prec, rec, f1 = test_rf(X_train, X_test, y_train, y_test, report=False)
+        _, prec, rec, f1 = test_rf(
+            X_train, X_test, y_train, y_test, report=False
+        )
         row = {
             "snr_range": str(i),
             "test_precision": [prec],

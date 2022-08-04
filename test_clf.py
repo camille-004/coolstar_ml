@@ -1,9 +1,10 @@
 """Load the data with specified preprocessing/FE steps and test a classifier."""
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
-from imblearn.under_sampling import RandomUnderSampler
+
+# from imblearn.under_sampling import RandomUnderSampler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     classification_report,
@@ -14,7 +15,11 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 
 from feature_engineering import feature_engineering
-from preprocess_data import get_binary_single_dfs, type_to_num
+from preprocess_data import (
+    get_binaries_single_dfs_aug_3,
+    get_binary_single_dfs,
+    type_to_num,
+)
 from utils import load_config
 
 config = load_config("config.yaml")
@@ -22,10 +27,10 @@ config = load_config("config.yaml")
 
 def filter_binaries(
     _binaries_df: pd.DataFrame,
-    primary_min: int,
-    primary_max: int,
-    secondary_min: int,
-    secondary_max: int,
+    primary_min: int = config["primary_min"],
+    primary_max: int = config["primary_max"],
+    secondary_min: int = config["secondary_min"],
+    secondary_max: int = config["secondary_max"],
 ) -> pd.DataFrame:
     """
     Filter binary stars by primary and secondary spectral types.
@@ -83,90 +88,97 @@ def filter_snr(
 
 def prepare_data(
     f_name: str,
-    binaries_filter: Optional[List[str]],
-    singles_filter: Optional[List[str]],
-    scale: float,
     _add_noise: bool,
     snr: bool,
     template_diffs: bool,
     chisq: bool,
-    bardalez_chisq: bool,
-    chisq_std: bool,
+    binaries_filter: [Tuple[str]] = (
+        config["primary_min"],
+        config["primary_max"],
+        config["primary_min"],
+        config["primary_max"],
+    ),
+    singles_filter: [Tuple[str]] = (
+        config["single_min"],
+        config["single_max"],
+    ),
+    new_version: bool = True,
 ) -> pd.DataFrame:
     """
     Load the fully cleaned and preprocessed dataset.
 
     :param f_name: Filename of raw dataset
     :param binaries_filter: Conditions for filtering binaries by primary and secondary type,
-    optional
-    :param singles_filter: Conditions for filtering singles by spectral type, optional
-    :param scale: Noise scaling (and chi-squared if using)
+    :param singles_filter: Conditions for filtering singles by spectral type
     :param _add_noise: Whether to add noise
     :param snr: Whether to calculate signal-to-noise ratio
     :param template_diffs: Whether to add in the difference spectra as a feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
-    :param bardalez_chisq: Whether to use Bardalez binning for chi-squared calculation
-    :param chisq_std: Whether to add standard deviation feature (if using bardalez binning for
-    chi-squared calculation)
+    :param new_version: Whether to load the August 3 version of the dataset
     :return: Prepared DataFrame
     """
     assert f_name in os.listdir(config["data_dir"])
-    _singles, _binaries = get_binary_single_dfs(
-        os.path.join(config["data_dir"], f_name)
-    )
-    if binaries_filter:
-        binaries_filter = map(type_to_num, binaries_filter)
-        (
-            primaries_min,
-            primaries_max,
-            secondaries_min,
-            secondaries_max,
-        ) = binaries_filter
-        _binaries = filter_binaries(
-            _binaries,
-            primaries_min,
-            primaries_max,
-            secondaries_min,
-            secondaries_max,
+    if new_version:
+        _singles, _binaries = get_binaries_single_dfs_aug_3(
+            os.path.join(config["data_dir"], f_name)
         )
-    if singles_filter:
-        singles_filter = map(type_to_num, singles_filter)
-        type_min, type_max = singles_filter
-        _singles = filter_singles(_singles, type_min, type_max)
+    else:
+        _singles, _binaries = get_binary_single_dfs(
+            os.path.join(config["data_dir"], f_name)
+        )
+
+    binaries_filter = map(type_to_num, binaries_filter)
+    (
+        primaries_min,
+        primaries_max,
+        secondaries_min,
+        secondaries_max,
+    ) = binaries_filter
+    _binaries = filter_binaries(
+        _binaries,
+        primaries_min,
+        primaries_max,
+        secondaries_min,
+        secondaries_max,
+    )
+    _binaries = _binaries.drop(
+        columns=[config["primary_type_col"], config["secondary_type_col"]]
+    )
+    singles_filter = map(type_to_num, singles_filter)
+    type_min, type_max = singles_filter
+    _singles = filter_singles(_singles, type_min, type_max)
     _df = feature_engineering(
         _singles,
         _binaries,
-        scale=scale,
         _add_noise=_add_noise,
         snr=snr,
         add_template_diffs=template_diffs,
         chisq=chisq,
-        bardalez_chisq=bardalez_chisq,
-        chisq_std=chisq_std,
+        new_version=new_version,
     )
-    # print(f"DataFrame shape: {_df.shape}")
+    print(f"DataFrame shape: {_df.shape}")
     return _df
 
 
-def random_undersample(_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Randomly under-sample the majority class (binaries) to balance the training dataset.
-
-    :param _df: Input training DataFrame
-    :return: Randomly under-sampled DataFrame
-    """
-    counts = _df[config["target_col"]].value_counts()
-    print("Before random undersampling:")
-    print(f"{counts[0]} binaries, {counts[1]} singles")
-    undersample = RandomUnderSampler(sampling_strategy="majority")
-    X = _df.drop(columns=config["target_col"])
-    y = _df[config["target_col"]]
-    X_under, y_under = undersample.fit_resample(X, y)
-    _df = pd.concat([X_under, y_under], axis=1)
-    counts = _df[config["target_col"]].value_counts()
-    print("After random undersampling:")
-    print(f"{counts[0]} binaries, {counts[1]} singles")
-    return _df
+# def random_undersample(_df: pd.DataFrame) -> pd.DataFrame:
+#     """
+#     Randomly under-sample the majority class (binaries) to balance the training dataset.
+#
+#     :param _df: Input training DataFrame
+#     :return: Randomly under-sampled DataFrame
+#     """
+#     counts = _df[config["target_col"]].value_counts()
+#     print("Before random undersampling:")
+#     print(f"{counts[0]} binaries, {counts[1]} singles")
+#     undersample = RandomUnderSampler(sampling_strategy="majority")
+#     X = _df.drop(columns=config["target_col"])
+#     y = _df[config["target_col"]]
+#     X_under, y_under = undersample.fit_resample(X, y)
+#     _df = pd.concat([X_under, y_under], axis=1)
+#     counts = _df[config["target_col"]].value_counts()
+#     print("After random undersampling:")
+#     print(f"{counts[0]} binaries, {counts[1]} singles")
+#     return _df
 
 
 def split_data(
@@ -189,7 +201,7 @@ def split_data(
 
     if undersample:
         df_train = pd.concat([_X_train, _y_train], axis=1)
-        df_train = random_undersample(df_train)
+        # df_train = random_undersample(df_train)
         _X_train = df_train.drop(columns=config["target_col"])
         _y_train = df_train[config["target_col"]]
 
@@ -235,3 +247,13 @@ def test_rf(
         recall_score(_y_test, pred_test),
         f1_score(_y_test, pred_test),
     )
+
+
+df = prepare_data(
+    config["fp_aug3"],
+    _add_noise=True,
+    snr=True,
+    template_diffs=True,
+    chisq=True,
+    new_version=True,
+)
