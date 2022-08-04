@@ -58,7 +58,7 @@ def compute_chisq(
     diff_df: pd.DataFrame,
     noise_df: pd.DataFrame,
     scale: Optional[float],
-    bardalez: bool = True,
+    bardalez: bool,
 ) -> Union[pd.Series, pd.DataFrame]:
     """
     Compute chi-squared statistics on same wavelengths as in Bardalez et. al. or on all wavelengths
@@ -240,11 +240,16 @@ def feature_engineering(
                 axis=1,
             )
         else:
-            _singles["chisq"] = compute_chisq(
-                _singles_diffs, _singles_noise, scale
+            print(
+                compute_chisq(
+                    _singles_diffs, _singles_noise, scale, bardalez=False
+                )
+            )
+            _singles.loc[:, "chisq"] = compute_chisq(
+                _singles_diffs, _singles_noise, scale, bardalez=False
             )
             _binaries["chisq"] = compute_chisq(
-                _binaries_diffs, _binaries_noise, scale
+                _binaries_diffs, _binaries_noise, scale, bardalez=False
             )
 
         # Calculate the standard deviation between the chi-squared statistics at the three

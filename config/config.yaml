@@ -2,6 +2,7 @@ data_dir: data
 plots_dir: plots
 fp_june20: spectral_templates_data_version_june20.h5
 fp_july15: spectral_templates_data_version_july15.h5
+fp_july26: spectral_templates_data_version_jul26.h5
 singles_key: singles
 binaries_key: binaries
 wavegrid_key: wavegrid
@@ -24,10 +25,12 @@ primary_type_col: primary_type
 secondary_type_col: secondary_type
 zero_div_offset: 1.0e-50
 chisq_rescale: 1.0e-5
-noise_scale: 5.0
+noise_scale: 5
 seaborn_style: whitegrid
 seaborn_palette: hls
 seaborn_figsize: [16, 6]
 savefig.dpi: 300
 figure.dpi: 300
 test_size: 0.2
+
+snr_ranges: [[0, 3], [3, 5], [5, 10], [10, 20], [20, 1000]]

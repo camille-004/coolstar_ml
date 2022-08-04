@@ -5,7 +5,12 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
+from sklearn.metrics import (
+    classification_report,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from sklearn.model_selection import train_test_split
 
 from feature_engineering import feature_engineering
@@ -139,7 +144,7 @@ def prepare_data(
         bardalez_chisq=bardalez_chisq,
         chisq_std=chisq_std,
     )
-    print(f"DataFrame shape: {_df.shape}")
+    # print(f"DataFrame shape: {_df.shape}")
     return _df
 
 
@@ -179,7 +184,7 @@ def split_data(
     X = _df.drop(columns=config["target_col"])
     y = _df[config["target_col"]]
     _X_train, _X_test, _y_train, _y_test = train_test_split(
-        X, y, test_size=config["test_size"], stratify=y
+        X, y, test_size=config["test_size"], stratify=y, random_state=42
     )
 
     if undersample:
@@ -196,8 +201,9 @@ def test_rf(
     _X_test: pd.DataFrame,
     _y_train: pd.Series,
     _y_test: pd.Series,
+    report: bool = True,
     rf_params: Optional[Dict] = None,
-) -> None:
+) -> Tuple[RandomForestClassifier, float, float, float]:
     """
     Fit a RandomForestClassifier on the training data and print the classification report on the
     training and test sets.
@@ -205,8 +211,9 @@ def test_rf(
     :param _X_test: Input testing features
     :param _y_train: Input training label
     :param _y_test: Input testing label
+    :param report: Whether to print the train and test classification_reports
     :param rf_params: Dictionary of hyperparameters for the RandomForestClassifier
-    :return:
+    :return: Test precision, recall, and F1-score
     """
     if rf_params:
         clf = RandomForestClassifier(**rf_params)
@@ -215,24 +222,16 @@ def test_rf(
     clf.fit(_X_train, _y_train)
     pred_train = clf.predict(_X_train)
     pred_test = clf.predict(_X_test)
-    print("Train:")
-    print(classification_report(_y_train, pred_train) + "\n")
-    print("Test:")
-    print(classification_report(_y_test, pred_test))
 
+    if report:
+        print("Train:")
+        print(classification_report(_y_train, pred_train) + "\n")
+        print("Test:")
+        print(classification_report(_y_test, pred_test))
 
-df = prepare_data(
-    f_name=config["fp_july15"],
-    binaries_filter=["M7", "L7", "T0", "T6"],
-    singles_filter=["M7", "L4"],
-    scale=config["noise_scale"],
-    _add_noise=False,
-    snr=False,
-    template_diffs=False,
-    chisq=False,
-    bardalez_chisq=False,
-    chisq_std=False,
-)
-
-X_train, X_test, y_train, y_test = split_data(df)
-test_rf(X_train, X_test, y_train, y_test)
+    return (
+        clf,
+        precision_score(_y_test, pred_test),
+        recall_score(_y_test, pred_test),
+        f1_score(_y_test, pred_test),
+    )

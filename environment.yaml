@@ -18,7 +18,10 @@ dependencies:
   - scikit-learn
   - pylint
   - pytables
+  - ipykernel
   - pip:
       - skfeature-chappers
       - scikit-learn
       - imblearn
+      - astropy
+      - sphinx
