@@ -104,38 +104,44 @@ def get_spectral_data(
     _singles_df: pd.DataFrame, _binaries_df: pd.DataFrame
 ) -> Tuple[Union[pd.Series, pd.DataFrame], ...]:
     """
-    Get different measurements from merged and deduplicated data. For July 15th version.
+    Get different measurements from merged and deduplicated data. For July
+    15th version.
 
     :param _singles_df: DataFrame of single stars
     :param _binaries_df: DataFrame of binary stars
     :return: Spectral type, flux, noise, difference spectrum DataFrames for
     binaries and singles
     """
-    _singles_type = _singles_df[config["spectral_type_col"]]
+    _singles_type = _singles_df[config["spectral_type_col"]].reset_index(
+        drop=True
+    )
     if _singles_type.dtypes in (object, np.object_):
         _singles_type = _singles_type.apply(type_to_num)
 
     _singles_flux = _singles_df.loc[
         :, ~_singles_df.columns.str.contains("noise|diff|type|name")
-    ]
+    ].reset_index(drop=True)
     _singles_noise = _singles_df.loc[
         :, _singles_df.columns.str.contains("noise")
-    ]
+    ].reset_index(drop=True)
     _singles_diff = _singles_df.loc[
         :, _singles_df.columns.str.contains("diff")
-    ]
+    ].reset_index(drop=True)
 
-    # Assuming binaries are already filtered by primary and secondary type groupings
-    _binaries_type = _binaries_df[config["spectral_type_col"]]
+    # Assuming binaries are already filtered by primary and secondary type
+    # groupings
+    _binaries_type = _binaries_df[config["spectral_type_col"]].reset_index(
+        drop=True
+    )
     _binaries_flux = _binaries_df.loc[
         :, ~_binaries_df.columns.str.contains("noise|diff|type|name")
-    ]
+    ].reset_index(drop=True)
     _binaries_noise = _binaries_df.loc[
         :, _binaries_df.columns.str.contains("noise")
-    ]
+    ].reset_index(drop=True)
     _binaries_diff = _binaries_df.loc[
         :, _binaries_df.columns.str.contains("diff")
-    ]
+    ].reset_index(drop=True)
 
     return (
         _singles_type,

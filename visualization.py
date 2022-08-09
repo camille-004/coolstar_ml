@@ -1,4 +1,5 @@
 """Module for generating plots."""
+import os
 from typing import List, Union
 
 import matplotlib.pyplot as plt
@@ -17,16 +18,28 @@ sns.set_style(config["seaborn_style"])
 sns.set_palette(config["seaborn_palette"])
 
 
-def plot_spectral_type(_df: pd.DataFrame) -> None:
+def plot_spectral_type(_df: pd.DataFrame, savefig: bool) -> None:
     """
     Plot s histogram of the spectral/system types by binaries vs. singles.
     :param _df: DataFrame with spectral type columns
-    :return: None
+    :return:
     """
-    _df[config["spectral_type_col"]].hist(
-        by=_df[config["target_col"]], figsize=tuple(config["seaborn_figsize"])
-    )
+    singles_type = _df[_df[config["target_col"]] == 0][
+        config["spectral_type_col"]
+    ]
+    binaries_type = _df[_df[config["target_col"]] == 1][
+        config["spectral_type_col"]
+    ]
+    _, ax = plt.subplots(1, 2, figsize=config["seaborn_figsize"], sharey=True)
+    ax[0].hist(singles_type)
+    ax[1].hist(binaries_type)
+    ax[0].set_title("Singles")
+    ax[1].set_title("Binaries")
     plt.suptitle("Spectral Type Distribution by Class")
+    if savefig:
+        plt.savefig(
+            os.path.join(config["figures_dir"], config["class_dist_plot_name"])
+        )
     plt.show()
 
 
@@ -39,18 +52,17 @@ def plot_snr_class_dist(_snr_ranges: List[List[int]]) -> None:
     """
     class_dist = pd.DataFrame()
     for i in _snr_ranges:
-        df = prepare_data(
-            f_name=config["fp_july15"],
-            binaries_filter=["M0", "T9", "M0", "T9"],
-            singles_filter=["M0", "T9"],
+        _df = prepare_data(
+            f_name=config["fp_aug3"],
             _add_noise=True,
             snr=True,
             template_diffs=False,
-            chisq=False,
+            chisq=True,
+            new_version=True,
         )
         snr_min, snr_max = i
-        df = filter_snr(df, snr_min, snr_max)
-        counts = df[config["target_col"]].value_counts()
+        _df = filter_snr(_df, snr_min, snr_max)
+        counts = _df[config["target_col"]].value_counts()
         counts_df = counts.to_frame().rename(
             columns={config["target_col"]: "counts"}
         )
@@ -68,7 +80,8 @@ def plot_model_metrics_snr(
     _snr_ranges: List[List[int]], **kwargs: Union[List[str], bool, str, float]
 ) -> None:
     """
-    Run an RF model and plot the testing performance metrics for each SNR range.
+    Run an RF model and plot the testing performance metrics for each SNR
+    range.
 
     :param _snr_ranges: List of list of SNR ranges to plot
     :return:
@@ -76,10 +89,10 @@ def plot_model_metrics_snr(
     metrics_df = pd.DataFrame()
     n_test_singles = []
     for i in _snr_ranges:
-        df = prepare_data(**kwargs)  # pylint: disable=E1120
+        _df = prepare_data(**kwargs)  # pylint: disable=E1120
         snr_min, snr_max = i
-        df = filter_snr(df, snr_min, snr_max)
-        X_train, X_test, y_train, y_test = split_data(df)
+        _df = filter_snr(_df, snr_min, snr_max)
+        X_train, X_test, y_train, y_test = split_data(_df)
         n_test_singles.append(
             y_test.sum()
         )  # Get number of singles in test set

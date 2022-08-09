@@ -1,4 +1,5 @@
-"""Load the data with specified preprocessing/FE steps and test a classifier."""
+"""Load the data with specified preprocessing/FE steps and test a
+classifier."""
 import os
 from typing import Dict, Optional, Tuple
 
@@ -29,11 +30,13 @@ def filter_binaries(
     _binaries_df: pd.DataFrame,
     primary_min: int = config["primary_min"],
     primary_max: int = config["primary_max"],
-    secondary_min: int = config["secondary_min"],
-    secondary_max: int = config["secondary_max"],
+    secondary_min: int = None,
+    secondary_max: int = None,
 ) -> pd.DataFrame:
     """
-    Filter binary stars by primary and secondary spectral types.
+    Filter binary stars by primary and secondary spectral types, or filter by
+    binary types and get DF where secondary type numbers are higher than
+    primary type numbers.
 
     :param _binaries_df: DataFrame containing binary stars with spectral types
     :param primary_min: Minimum desired primary type
@@ -42,12 +45,28 @@ def filter_binaries(
     :param secondary_max: Maximum desire secondary type
     :return: Filtered binary DataFrame
     """
-    return _binaries_df[
+    if secondary_min is not None and secondary_max is not None:
+        return _binaries_df[
+            (_binaries_df[config["primary_type_col"]] >= primary_min)
+            & (_binaries_df[config["primary_type_col"]] <= primary_max)
+            & (_binaries_df[config["secondary_type_col"]] >= secondary_min)
+            & (_binaries_df[config["secondary_type_col"]] <= secondary_max)
+        ]
+    _binaries = _binaries_df[
         (_binaries_df[config["primary_type_col"]] >= primary_min)
         & (_binaries_df[config["primary_type_col"]] <= primary_max)
-        & (_binaries_df[config["secondary_type_col"]] >= secondary_min)
-        & (_binaries_df[config["secondary_type_col"]] <= secondary_max)
     ]
+    _binaries = _binaries[
+        _binaries[config["secondary_type_col"]].ge(
+            _binaries[config["primary_type_col"]]
+        )
+    ]
+    _binaries = _binaries[
+        _binaries[config["spectral_type_col"]].ge(
+            _binaries[config["primary_type_col"]]
+        )
+    ]
+    return _binaries
 
 
 def filter_singles(
@@ -92,13 +111,11 @@ def prepare_data(
     snr: bool,
     template_diffs: bool,
     chisq: bool,
-    binaries_filter: [Tuple[str]] = (
-        config["primary_min"],
-        config["primary_max"],
+    binaries_filter: Tuple[str] = (
         config["primary_min"],
         config["primary_max"],
     ),
-    singles_filter: [Tuple[str]] = (
+    singles_filter: Tuple[str] = (
         config["single_min"],
         config["single_max"],
     ),
@@ -108,11 +125,13 @@ def prepare_data(
     Load the fully cleaned and preprocessed dataset.
 
     :param f_name: Filename of raw dataset
-    :param binaries_filter: Conditions for filtering binaries by primary and secondary type,
+    :param binaries_filter: Conditions for filtering binaries by primary and
+    secondary type,
     :param singles_filter: Conditions for filtering singles by spectral type
     :param _add_noise: Whether to add noise
     :param snr: Whether to calculate signal-to-noise ratio
-    :param template_diffs: Whether to add in the difference spectra as a feature
+    :param template_diffs: Whether to add in the difference spectra as a
+    feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
     :param new_version: Whether to load the August 3 version of the dataset
     :return: Prepared DataFrame
@@ -127,20 +146,27 @@ def prepare_data(
             os.path.join(config["data_dir"], f_name)
         )
 
-    binaries_filter = map(type_to_num, binaries_filter)
-    (
-        primaries_min,
-        primaries_max,
-        secondaries_min,
-        secondaries_max,
-    ) = binaries_filter
-    _binaries = filter_binaries(
-        _binaries,
-        primaries_min,
-        primaries_max,
-        secondaries_min,
-        secondaries_max,
-    )
+    binaries_filter = tuple(map(type_to_num, binaries_filter))
+    if len(binaries_filter) == 4:
+        (
+            primaries_min,
+            primaries_max,
+            secondaries_min,
+            secondaries_max,
+        ) = binaries_filter
+        _binaries = filter_binaries(
+            _binaries,
+            primaries_min,
+            primaries_max,
+            secondaries_min,
+            secondaries_max,
+        )
+    if len(binaries_filter) == 2:
+        _binaries = filter_binaries(
+            _binaries,
+            primary_min=binaries_filter[0],
+            primary_max=binaries_filter[1],
+        )
     _binaries = _binaries.drop(
         columns=[config["primary_type_col"], config["secondary_type_col"]]
     )
@@ -162,7 +188,8 @@ def prepare_data(
 
 # def random_undersample(_df: pd.DataFrame) -> pd.DataFrame:
 #     """
-#     Randomly under-sample the majority class (binaries) to balance the training dataset.
+#     Randomly under-sample the majority class (binaries) to balance the
+#     training dataset.
 #
 #     :param _df: Input training DataFrame
 #     :return: Randomly under-sampled DataFrame
@@ -188,7 +215,8 @@ def split_data(
     Split a DataFrame into training and test sets.
 
     :param _df: Input DataFrame to split into training and test sets
-    :param undersample: Whether or not to randomly undersample the majority class in the training
+    :param undersample: Whether or not to randomly undersample the majority
+    class in the training
     set
     :return: Training and testing X and y as a tuple
     """
@@ -217,14 +245,16 @@ def test_rf(
     rf_params: Optional[Dict] = None,
 ) -> Tuple[RandomForestClassifier, float, float, float]:
     """
-    Fit a RandomForestClassifier on the training data and print the classification report on the
-    training and test sets.
+    Fit a RandomForestClassifier on the training data and print the
+    classification report on the training and test sets.
+
     :param _X_train: Input training features
     :param _X_test: Input testing features
     :param _y_train: Input training label
     :param _y_test: Input testing label
     :param report: Whether to print the train and test classification_reports
-    :param rf_params: Dictionary of hyperparameters for the RandomForestClassifier
+    :param rf_params: Dictionary of hyperparameters for the
+    RandomForestClassifier
     :return: Test precision, recall, and F1-score
     """
     if rf_params:
@@ -247,13 +277,3 @@ def test_rf(
         recall_score(_y_test, pred_test),
         f1_score(_y_test, pred_test),
     )
-
-
-df = prepare_data(
-    config["fp_aug3"],
-    _add_noise=True,
-    snr=True,
-    template_diffs=True,
-    chisq=True,
-    new_version=True,
-)

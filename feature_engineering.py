@@ -1,4 +1,5 @@
-"""Feature engineering module (add noise, compute chi-squared statistic, etc.)"""
+"""Feature engineering module (add noise, compute chi-squared statistic,
+etc.)"""
 import os
 from typing import Tuple, Union
 
@@ -29,7 +30,8 @@ def add_noise(
     ),
 ) -> Union[np.ndarray, int, float, complex]:
     """
-    Add Gaussian noise to each star in input DataFrame. Multiply uncertainty by a desired scale.
+    Add Gaussian noise to each star in input DataFrame. Multiply uncertainty
+    by a desired scale.
 
     :param flux_df: DataFrame of flux measurements
     :param noise_df: DataFrame of uncertainties
@@ -39,6 +41,7 @@ def add_noise(
     scale = pd.Series(
         np.random.uniform(noise_low, noise_high, size=len(noise_df))
     )
+
     with_noise = np.random.normal(flux_df, noise_df.abs().mul(scale, axis=0))
     with_noise = pd.DataFrame(with_noise, columns=flux_df.columns)
     with_noise["scale"] = scale
@@ -47,8 +50,8 @@ def add_noise(
 
 def compute_snr(flux_df: pd.DataFrame, noise_df: pd.DataFrame) -> np.ndarray:
     """
-    Compute signal-to-noise ratio for each spectrum in input DataFrame. Note: SNR is not meant to
-    be used as a feature.
+    Compute signal-to-noise ratio for each spectrum in input DataFrame.
+    Note: SNR is not meant to be used as a feature.
 
     :param flux_df: DataFrame of flux measurements
     :param noise_df: DataFrame of uncertainties
@@ -127,7 +130,7 @@ def compute_chisq(
     noises = pd.concat([noise_range_1, noise_range_2, noise_range_3], axis=1)
     scale = noise_df["scale"]
 
-    return pd.Series(
+    result = pd.Series(
         (
             (
                 diffs.mul(scale, axis=0).values
@@ -140,6 +143,9 @@ def compute_chisq(
         ).sum(axis=1)
     )
 
+    result = result.apply(lambda x: x / float(config["chisq_scale"]))
+    return result
+
 
 def feature_engineering(
     _singles: pd.DataFrame,
@@ -151,14 +157,15 @@ def feature_engineering(
     new_version: bool,
 ) -> pd.DataFrame:
     """
-    Add noise to spectra, optionally calculate SNR for binning, add spectrum differences, compute
-    chi-squared statistics with differences.
+    Add noise to spectra, optionally calculate SNR for binning, add spectrum
+    differences, compute chi-squared statistics with differences.
 
     :param _singles: Input singles DataFrame
     :param _binaries: Input binaries DataFrame
     :param _add_noise: Whether or not to add noise
     :param snr: Whether to calculate signal-to-noise ratio
-    :param add_template_diffs: Whether to add in the difference spectra as a feature
+    :param add_template_diffs: Whether to add in the difference spectra as a
+    feature
     :param chisq: Whether to calculate the chi-squared statistic for spectra
     chi-squared calculation)
     :param new_version: Whether we are using the August 3 dataset
@@ -175,6 +182,9 @@ def feature_engineering(
         _binaries_diffs,
     ) = get_spectral_data(_singles, _binaries)
 
+    print(f"Number of singles: {len(_singles_flux)}")
+    print(f"Number of binaries: {len(_binaries_flux)}")
+
     # Add the noise
     if _add_noise:
         _singles = add_noise(_singles_flux, _singles_noise)
@@ -188,7 +198,8 @@ def feature_engineering(
         _singles = pd.concat([_singles, _singles_diffs], axis=1)
         _binaries = pd.concat([_binaries, _binaries_diffs], axis=1)
 
-    # Compute signal-to-noise ratio (NOT TO USE AS A FEATURE, but binning for different models)
+    # Compute signal-to-noise ratio (NOT TO USE AS A FEATURE, but binning for
+    # different models)
     if snr:
         assert (
             _add_noise
@@ -206,7 +217,8 @@ def feature_engineering(
     if chisq:
         assert (
             _add_noise
-        ), "You must provide values for _add_noise to compute the chi-squared statistic."
+        ), "You must provide values for _add_noise to compute the "
+        +"chi-squared statistic."
         _singles["chisq"] = compute_chisq(
             _singles_diffs,
             pd.concat([_singles_noise, _singles["scale"]], axis=1),
